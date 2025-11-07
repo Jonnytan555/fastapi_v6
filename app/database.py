@@ -9,7 +9,11 @@ from .config import settings
 load_dotenv()
 
 # DATABASE_URL = f"postgresql://postgres:{os.getenv('DATABASE_PASSWORD')}@{os.getenv('DATABASE_HOSTNAME')}:{os.getenv('DATABASE_PORT')}/{os.getenv('DATABASE_NAME')}"
-DATABASE_URL = f"postgresql://postgres:{settings.DATABASE_PASSWORD}@{settings.DATABASE_HOSTNAME}:{settings.DATABASE_PORT}/{settings.DATABASE_NAME}"
+DATABASE_URL = (
+    f"postgresql+psycopg://postgres:{os.getenv('DATABASE_PASSWORD')}"
+    f"@{os.getenv('DATABASE_HOSTNAME')}:{os.getenv('DATABASE_PORT')}"
+    f"/{os.getenv('DATABASE_NAME')}"
+)
 
 engine = create_engine(DATABASE_URL)
 
