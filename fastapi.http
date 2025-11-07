@@ -1,0 +1,17 @@
+GET http://127.0.0.1:8000/
+
+###
+
+GET http://127.0.0.1:8000/
+
+
+###
+
+POST http://127.0.0.1:8000/posts
+Content-Type: application/json
+
+{
+  "title": "My post from PyCharm HTTP client",
+  "content": "This is the content",
+  "published": true
+}
