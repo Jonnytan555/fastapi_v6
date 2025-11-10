@@ -10,14 +10,6 @@ from app.database import SessionLocal
 
 print(f"Starting {config.settings.APP_NAME}")
 
-url = os.getenv("HEROKU_DB_URL")
-
-engine = create_engine(url, pool_pre_ping=True) # type: ignore
-
-with engine.connect() as conn:
-    result = conn.execute(text("SELECT version();"))
-    print(result.scalar())
-
 # models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -35,13 +27,6 @@ app.add_middleware(
 app.include_router(posts.router)
 app.include_router(users.router)
 app.include_router(vote.router)
-
-#### ORM TEST Route
-@app.get("/sql")
-def orm_test(db: Session = Depends(get_db)):
-    posts = db.query(models.Post).all()
-    return {"data": posts}
-
 
 @app.get("/")
 def get_home():
