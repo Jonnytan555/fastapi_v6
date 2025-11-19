@@ -1,0 +1,15 @@
+[Unit]
+Description=Gunicorn instance to serve FastAPI app
+After=network.target
+
+[Service]
+User=jedwards1
+Group=jedwards1
+WorkingDirectory=/home/jedwards1/app/src/
+Environment="PATH=/home/jedwards1/app/venv/bin"
+EnvironmentFile=/home/jedwards1/.env 
+
+ExecStart=/home/jedwards1/app/venv/bin/gunicorn -w 4 -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000
+
+[Install]
+WantedBy=multi-user.target
