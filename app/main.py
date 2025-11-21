@@ -8,8 +8,6 @@ from . import models, config
 from . routes import posts, users, vote
 from app.database import SessionLocal
 
-print(f"Starting {config.settings.APP_NAME}")
-
 # models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -30,7 +28,7 @@ app.include_router(vote.router)
 
 @app.get("/")
 def get_home():
-    return {"mess": "Hello World"}
+    return {"mess": "Welcome to the Posts API!"}
 
 @app.get("/db-health")
 def db_health():

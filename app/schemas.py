@@ -1,10 +1,7 @@
-from typing import Optional, List
+from typing import Optional
 from typing_extensions import Annotated
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from datetime import datetime
-
-class ConfigFromOrm:
-    model_config = {"from_attributes": True}  # pydantic v2
 
 # ---------- Users ----------
 class UserCreate(BaseModel):
@@ -14,7 +11,8 @@ class UserCreate(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: EmailStr
-    class Config(ConfigFromOrm): ...
+
+    model_config = ConfigDict(from_attributes=True)
 
 class UserLoginJSON(BaseModel):
     username: EmailStr
@@ -42,13 +40,15 @@ class Post(PostBase):
     created_at: datetime
     user_id: int
     user: UserResponse
-    class Config(ConfigFromOrm): ...
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PostOut(PostBase):
     Post: Post
     votes: int
-    class Config(ConfigFromOrm): ...
+
+    model_config = ConfigDict(from_attributes=True)
 
 # ---------- Votes ----------
 class Vote(BaseModel):
