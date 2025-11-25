@@ -1,22 +1,33 @@
+import os
+from functools import lru_cache
 from pathlib import Path
 from pydantic_settings import BaseSettings
-from pydantic import Field
+
+from app.utils import load_environment
+
+ROOT = Path(__file__).resolve().parent.parent
+
+print("ENV_FILE:", os.getenv("ENV_FILE"))
+print("Using env file:", ROOT / os.getenv("ENV_FILE", ".env.dev"))
 
 class Settings(BaseSettings):
-    APP_NAME: str = Field(default="posts-api")
-    APP_ENV: str = Field(default="dev")
+    APP_ENV: str = "dev"
 
-    DATABASE_HOSTNAME: str = Field(default="localhost")
-    DATABASE_PORT: int = Field(default=5432)
-    DATABASE_NAME: str = Field(default="fastapi_v1")
-    DATABASE_PASSWORD: str = Field(default="password123")
+    DATABASE_HOSTNAME: str
+    DATABASE_PORT: int
+    DATABASE_NAME: str
+    DATABASE_USER: str
+    DATABASE_PASSWORD: str
 
-    SECRET_KEY: str = Field(...)
-    ALGORITHM: str = Field(default="HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60)
+    SECRET_KEY: str
+    ALGORITHM: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int
 
     class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+        env_file = ROOT / os.getenv("ENV_FILE", ".env.dev")
+        extra = "ignore"
 
-settings = Settings() # type: ignore
+@lru_cache()
+def get_settings():
+    load_environment()
+    return Settings()

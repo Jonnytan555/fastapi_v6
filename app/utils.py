@@ -1,47 +1,65 @@
+# app/utils.py
+
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-def get_env_path() -> str:
+# -----------------------------------------------------
+# Project root (folder above /app)
+# -----------------------------------------------------
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+# -----------------------------------------------------
+# Allowed env files
+# -----------------------------------------------------
+ENV_FILES = {
+    "dev": ".env.dev",
+    "test": ".env.test",
+    "prod": ".env.prod",
+}
+
+
+# -----------------------------------------------------
+#  Load environment file path (does NOT load variables)
+# -----------------------------------------------------
+def load_environment(app_env: str = None) -> Path:
     """
-    Picks the correct .env file automatically based on:
-    - APP_ENV=dev/test/prod
-    - OS platform (Windows vs Linux server)
+    Return absolute path to the correct .env file based on APP_ENV.
+    Does not load the file into environment variables.
+
+    Priority:
+       1. Explicit app_env argument
+       2. APP_ENV env var
+       3. default = "dev"
     """
-    env = os.getenv("APP_ENV", "dev").lower()
+    env = (app_env or os.getenv("APP_ENV", "dev")).lower()
 
-    # Linux server path
-    if os.name == "posix":
-        return f"/home/jedwards1/app/.env.{env}"
+    if env not in ENV_FILES:
+        raise ValueError(f"Unknown environment: {env}")
 
-    # Windows local path
-    project_root = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(project_root, f".env.{env}")
+    env_path = PROJECT_ROOT / ENV_FILES[env]
+
+    if not env_path.exists():
+        raise FileNotFoundError(f"Environment file not found: {env_path}")
+
+    return env_path
 
 
-def get_db_url() -> str:
-    env_path = get_env_path()
+# -----------------------------------------------------
+#  Build DB connection URL
+# -----------------------------------------------------
+def get_db_url(app_env: str = None) -> str:
+    """
+    Loads the correct .env file then returns:
+        postgresql+psycopg2://user:password@host:port/db
+    """
+    env_path = load_environment(app_env)
+    load_dotenv(env_path)
 
-    if os.path.exists(env_path):
-        print(f"⚙️ Loading env: {env_path}")
-        load_dotenv(env_path)
-    else:
-        raise FileNotFoundError(f"Missing environment file: {env_path}")
+    user = os.getenv("DATABASE_USER")
+    pwd = os.getenv("DATABASE_PASSWORD")
+    host = os.getenv("DATABASE_HOSTNAME")
+    port = os.getenv("DATABASE_PORT")
+    db = os.getenv("DATABASE_NAME")
 
-    # 1️⃣ Prefer DATABASE_URL (prod)
-    url = os.getenv("DATABASE_URL")
-
-    # 2️⃣ If missing, build manually
-    if not url:
-        user = os.getenv("DATABASE_USER", "postgres")
-        passwd = os.getenv("DATABASE_PASSWORD", "")
-        host = os.getenv("DATABASE_HOSTNAME", "localhost")
-        port = os.getenv("DATABASE_PORT", "5432")
-        name = os.getenv("DATABASE_NAME")
-
-        url = f"postgresql+psycopg2://{user}:{passwd}@{host}:{port}/{name}"
-
-    # Normalize schema
-    if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql+psycopg2://", 1)
-
-    return url
+    return f"postgresql+psycopg2://{user}:{pwd}@{host}:{port}/{db}"

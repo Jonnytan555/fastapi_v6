@@ -11,6 +11,18 @@ router = APIRouter(
     dependencies=[Depends(oauth2.get_current_user)],
 )
 
+@router.get("/{id}", response_model=schemas.PostOut)
+def get_post(id: int,
+             db: Session = Depends(database.get_db),
+             current_user: int = Depends(oauth2.get_current_user)):
+    post = db.query(models.Post).filter(models.Post.id == id).first()
+
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    return {"Post": post, "votes": 0}
+
+
 @router.get("/", response_model=List[schemas.PostOut])
 def get_posts(
     db: Session = Depends(database.get_db),
@@ -24,11 +36,18 @@ def get_posts(
 
     # posts = db.query(models.Post).filter(
     #     models.Post.title.contains(search)).limit(limit).offset(skip).all()
-    
-    posts = db.query(models.Post, func.count(models.Vote.post_id).label("votes")).join(
-        models.Vote, models.Vote.post_id == models.Post.id, isouter=True).group_by(models.Post.id).all()
 
-    return posts
+    results = (
+        db.query(models.Post, func.count(models.Vote.post_id).label("votes"))
+        .join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True)
+        .group_by(models.Post.id)
+        .all()
+    )
+
+    return [
+        {"Post": post, "votes": votes}
+        for post, votes in results
+    ]
 
 @router.post("/", response_model=schemas.Post, status_code=status.HTTP_201_CREATED)
 def create_post(

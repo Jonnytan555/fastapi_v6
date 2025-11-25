@@ -1,11 +1,8 @@
-import os
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session
 from fastapi import FastAPI,  Depends
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine, get_db
-from . import models, config
-from . routes import posts, users, vote
+
+from .routes import posts, users, vote, auth
 from app.database import SessionLocal
 
 # models.Base.metadata.create_all(bind=engine)
@@ -25,6 +22,8 @@ app.add_middleware(
 app.include_router(posts.router)
 app.include_router(users.router)
 app.include_router(vote.router)
+
+app.include_router(auth.router)
 
 @app.get("/")
 def get_home():
