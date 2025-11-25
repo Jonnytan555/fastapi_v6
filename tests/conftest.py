@@ -4,18 +4,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-# ---------------------------------------------------------
-#  MUST SET ENVIRONMENT *BEFORE ANY APP IMPORTS*
-# ---------------------------------------------------------
 os.environ["APP_ENV"] = "test"
 os.environ["ENV_FILE"] = ".env.test"
 
-print(">>>> APP_ENV:", os.environ["APP_ENV"])
-print(">>>> ENV_FILE:", os.environ["ENV_FILE"])
-
-# ---------------------------------------------------------
-#  Now import the app (after env is set)
-# ---------------------------------------------------------
 from app.config import get_settings
 settings = get_settings()
 
@@ -79,6 +70,13 @@ def test_user(client):
     assert response.status_code == 201
     return response.json()
 
+@pytest.fixture()
+def test_user2(client):
+    data = {"email": "test2@example.com", "password": "password1234"}
+    response = client.post("/users/", json=data)
+    assert response.status_code == 201
+    return response.json()
+
 # ---------------------------------------------------------
 #  JWT token for that user
 # ---------------------------------------------------------
@@ -116,7 +114,18 @@ def test_posts(test_user, session):
         models.Post(title="post title", content="post content", user_id=test_user["id"]),
         models.Post(title="2nd post", content="2nd content", user_id=test_user["id"]),
         models.Post(title="3rd post", content="3rd content", user_id=test_user["id"]),
+        models.Post(title="4th post", content="4th content", user_id=test_user2["id"]),
     ]
     session.add_all(posts)
     session.commit()
     return session.query(models.Post).all()
+
+# ---------------------------------------------------------
+#  Vote fixtures
+# ---------------------------------------------------------
+
+@pytest.fixture()
+def test_vote(test_posts, session, test_user):
+    new_vote = models.Vote(post_id=test_posts[3].id, user_id=test_user["id"])
+    session.add(new_vote)
+    session.commit()
