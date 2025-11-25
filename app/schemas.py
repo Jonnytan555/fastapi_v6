@@ -44,7 +44,7 @@ class Post(PostBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-class PostOut(PostBase):
+class PostOut(BaseModel):
     Post: Post
     votes: int
 

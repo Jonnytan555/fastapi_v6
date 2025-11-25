@@ -11,43 +11,38 @@ router = APIRouter(
     dependencies=[Depends(oauth2.get_current_user)],
 )
 
+
 @router.get("/{id}", response_model=schemas.PostOut)
-def get_post(id: int,
-             db: Session = Depends(database.get_db),
-             current_user: int = Depends(oauth2.get_current_user)):
-    post = db.query(models.Post).filter(models.Post.id == id).first()
+def get_post(id: int, db: Session = Depends(database.get_db),
+             current_user: models.User = Depends(oauth2.get_current_user)):
+    result = (
+        db.query(models.Post, func.count(models.Vote.post_id).label("votes"))
+        .outerjoin(models.Vote, models.Vote.post_id == models.Post.id)
+        .group_by(models.Post.id)
+        .filter(models.Post.id == id)
+        .first()
+    )
 
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
+    if not result:
+        raise HTTPException(404, "Post not found")
 
-    return {"Post": post, "votes": 0}
+    post, votes = result
+    return {"Post": post, "votes": votes}
 
 
 @router.get("/", response_model=List[schemas.PostOut])
-def get_posts(
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(oauth2.get_current_user),
-    limit: int = 10,
-    skip: int = 0,
-    search: Optional[str] = "",
-):
-    # posts = db.query(models.Post).filter(
-    #     models.Post.user_id == current_user.id).all()
-
-    # posts = db.query(models.Post).filter(
-    #     models.Post.title.contains(search)).limit(limit).offset(skip).all()
+def get_posts(db: Session = Depends(database.get_db),
+              current_user: models.User = Depends(oauth2.get_current_user)):
 
     results = (
         db.query(models.Post, func.count(models.Vote.post_id).label("votes"))
-        .join(models.Vote, models.Vote.post_id == models.Post.id, isouter=True)
+        .outerjoin(models.Vote, models.Vote.post_id == models.Post.id)
         .group_by(models.Post.id)
         .all()
     )
 
-    return [
-        {"Post": post, "votes": votes}
-        for post, votes in results
-    ]
+    return [{"Post": post, "votes": votes} for post, votes in results]
+
 
 @router.post("/", response_model=schemas.Post, status_code=status.HTTP_201_CREATED)
 def create_post(
@@ -61,44 +56,38 @@ def create_post(
     db.refresh(post)
     return post
 
-@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_post(
-    id: int,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(oauth2.get_current_user),
-):
-    q = (
-        db.query(models.Post)
-        .filter(models.Post.id == id, models.Post.user_id == current_user.id)
-    )
+@router.delete("/{id}", status_code=204)
+def delete_post(id: int, db: Session = Depends(database.get_db),
+                current_user: models.User = Depends(oauth2.get_current_user)):
 
-    if q.first() is None:
-        raise HTTPException(status_code=404, detail=f"Post {id} not found")
-    
-    q.delete(synchronize_session=False)
+    post = db.query(models.Post).filter(models.Post.id == id).first()
+
+    if not post:
+        raise HTTPException(404, "Post not found")
+
+    if post.user_id != current_user.id:
+        raise HTTPException(403, "Not authorised")
+
+    db.delete(post)
     db.commit()
 
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.put("/{id}", response_model=schemas.Post)
-def update_post(
-    id: int,
-    payload: schemas.PostBase,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(oauth2.get_current_user),
-):
-    q = (
-        db.query(models.Post)
-        .filter(models.Post.id == id, models.Post.user_id == current_user.id)
-    )
+def update_post(id: int, payload: schemas.PostBase,
+                db: Session = Depends(database.get_db),
+                current_user: models.User = Depends(oauth2.get_current_user)):
 
-    existing = q.first()
+    post = db.query(models.Post).filter(models.Post.id == id).first()
 
-    if existing is None:
-        raise HTTPException(status_code=404, detail=f"Post {id} not found")
-    
-    q.update(payload.model_dump(), synchronize_session=False) # type: ignore
+    if not post:
+        raise HTTPException(404, "Post not found")
+
+    if post.user_id != current_user.id:
+        raise HTTPException(403, "Not authorised")
+
+    for key, value in payload.model_dump().items():
+        setattr(post, key, value)
+
     db.commit()
-    db.refresh(existing)
-
-    return existing
+    db.refresh(post)
+    return post
